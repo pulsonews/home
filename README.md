@@ -79,15 +79,46 @@ externo (ex: [cron-job.org](https://cron-job.org) ou GitHub Actions) para
 chamar `GET /api/rss/refresh` com o cabeçalho
 `Authorization: Bearer <RSS_REFRESH_SECRET>` no intervalo desejado.
 
-> **Importante sobre o "banco de dados":** para simplificar a instalação,
-> os dados (notícias, fontes, categorias, banners, inscritos) ficam em um
-> arquivo `data/db.json`. Isso funciona muito bem para começar, mas em
-> provedores serverless (como a Vercel) o sistema de arquivos é
-> temporário/somente leitura em produção. **Para produção com tráfego
-> real, troque `lib/db.ts` por um banco de verdade** (Postgres, MySQL, ou
-> serviços como Supabase/PlanetScale/Neon) — a estrutura de funções já
-> está isolada em `lib/db.ts` justamente para facilitar essa troca sem
-> mexer no resto do site.
+### Deploy no Railway
+
+1. Suba o projeto para um repositório no GitHub.
+2. Em [railway.app](https://railway.app), crie um projeto a partir do
+   repositório — o Railway detecta o Next.js automaticamente.
+3. No mesmo projeto, clique em **New → Database → PostgreSQL** para
+   adicionar um banco gerenciado.
+4. No serviço da aplicação, em **Variables**, adicione todas as chaves da
+   tabela acima. Para `DATABASE_URL`, referencie o Postgres criado (o
+   Railway sugere `${{Postgres.DATABASE_URL}}` automaticamente).
+5. Gere um domínio público em **Settings → Networking → Generate Domain**
+   e preencha `NEXT_PUBLIC_SITE_URL` com essa URL.
+6. Configure um cron externo (o Railway não tem cron nativo apontando
+   para uma URL) para chamar `GET /api/rss/refresh` a cada 15 minutos.
+
+## 4.1 Banco de dados (Postgres)
+
+Os dados do site (notícias, fontes RSS, categorias, banners e inscritos
+da newsletter) ficam em **Postgres** — importante porque provedores como
+Railway e Vercel não garantem um sistema de arquivos persistente entre
+deploys, então um banco de verdade evita perder tudo a cada atualização
+de código.
+
+Depois de ter uma `DATABASE_URL` válida em `.env.local` (ou nas variáveis
+de ambiente do provedor), rode uma vez:
+
+```bash
+npm run db:migrate   # cria as tabelas (categories, sources, banners, articles, newsletter)
+npm run db:seed      # popula categorias, fontes RSS e banners de exemplo
+```
+
+Esses dois comandos também podem ser rodados apontando `DATABASE_URL`
+para o Postgres do Railway a partir da sua máquina local (o Railway
+expõe uma URL pública de conexão em **Postgres → Connect**), sem precisar
+abrir um shell no servidor.
+
+A implementação inteira do acesso ao banco fica isolada em `lib/db.ts` —
+nenhuma página, componente ou rota de API precisa saber que por trás
+existe Postgres; se um dia você quiser trocar de banco, só este arquivo
+muda.
 
 ## 5. Configurando o Google AdSense
 
@@ -168,16 +199,17 @@ app/
 components/       → Header, Footer, ArticleCard, AdBanner, ShareButtons...
 components/admin/ → Telas e formulários do painel administrativo
 lib/
-  db.ts   → Acesso aos dados (trocar por um banco real em produção)
+  db.ts   → Acesso aos dados (Postgres)
   rss.ts  → Leitura e normalização dos feeds RSS
   auth.ts → Autenticação do painel admin
-data/db.json → Dados (categorias, fontes, banners, notícias, inscritos)
+scripts/
+  schema.sql   → Definição das tabelas do Postgres
+  migrate.mjs  → Aplica o schema.sql (npm run db:migrate)
+  seed.mjs     → Popula categorias, fontes e banners iniciais (npm run db:seed)
 ```
 
 ## 9. Próximos passos sugeridos
 
-- Trocar `data/db.json` por um banco de dados real antes de ir ao ar com
-  tráfego significativo.
 - Adicionar autenticação multiusuário no admin (hoje é uma senha única).
 - Conectar um serviço de e-mail transacional (Resend, SendGrid) para
   enviar de fato o resumo diário por e-mail aos inscritos.

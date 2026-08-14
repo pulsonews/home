@@ -1,7 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
+import pg from "pg";
 
-const DB_PATH = path.join(process.cwd(), "data", "db.json");
+const { Pool } = pg;
 
 export type Categoria = { slug: string; nome: string; cor: string };
 export type Fonte = { id: string; nome: string; url: string; categoria: string; ativo: boolean };
@@ -18,86 +17,218 @@ export type Artigo = {
 };
 export type Inscrito = { email: string; criadoEm: string };
 
-export type DB = {
-  categories: Categoria[];
-  sources: Fonte[];
-  banners: Banner[];
-  articles: Artigo[];
-  newsletter: Inscrito[];
-};
-
-// Nota: este projeto usa um arquivo JSON como "banco de dados" para manter o
-// setup simples (zero infraestrutura). Para produção com muito tráfego,
-// troque este arquivo por Postgres/MySQL (ex: Prisma) sem alterar a API
-// das funções abaixo — todas as telas do site chamam apenas estas funções.
-
-async function readDB(): Promise<DB> {
-  const raw = await fs.readFile(DB_PATH, "utf-8");
-  return JSON.parse(raw) as DB;
+// Pool de conexões reutilizado entre requisições (padrão recomendado para
+// Next.js em ambiente serverless/long-running). Em dev, guardamos no
+// objeto global para sobreviver ao hot-reload sem esgotar conexões.
+declare global {
+  // eslint-disable-next-line no-var
+  var __pgPool: pg.Pool | undefined;
 }
 
-async function writeDB(db: DB): Promise<void> {
-  await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
+function getPool() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error(
+      "DATABASE_URL não definida. Configure a variável de ambiente (o Railway injeta automaticamente ao adicionar um serviço PostgreSQL ao projeto)."
+    );
+  }
+  if (!global.__pgPool) {
+    global.__pgPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
+    });
+  }
+  return global.__pgPool;
+}
+
+function bannerFromRow(row: any): Banner {
+  return {
+    id: row.id,
+    posicao: row.posicao,
+    tipo: row.tipo,
+    slotId: row.slot_id ?? undefined,
+    html: row.html ?? undefined,
+    ativo: row.ativo
+  };
+}
+
+function artigoFromRow(row: any): Artigo {
+  return {
+    id: row.id,
+    titulo: row.titulo,
+    resumo: row.resumo,
+    link: row.link,
+    imagem: row.imagem ?? undefined,
+    categoria: row.categoria,
+    fonte: row.fonte,
+    publicadoEm: new Date(row.publicado_em).toISOString()
+  };
 }
 
 export const database = {
-  read: readDB,
-  write: writeDB,
-
-  async getCategories() {
-    return (await readDB()).categories;
-  },
-  async setCategories(categories: Categoria[]) {
-    const db = await readDB();
-    db.categories = categories;
-    await writeDB(db);
+  // ---------- Categorias ----------
+  async getCategories(): Promise<Categoria[]> {
+    const { rows } = await getPool().query(
+      "SELECT slug, nome, cor FROM categories ORDER BY nome ASC"
+    );
+    return rows;
   },
 
-  async getSources() {
-    return (await readDB()).sources;
-  },
-  async setSources(sources: Fonte[]) {
-    const db = await readDB();
-    db.sources = sources;
-    await writeDB(db);
-  },
-
-  async getBanners() {
-    return (await readDB()).banners;
-  },
-  async setBanners(banners: Banner[]) {
-    const db = await readDB();
-    db.banners = banners;
-    await writeDB(db);
-  },
-  async getBanner(posicao: string) {
-    const banners = await this.getBanners();
-    return banners.find((b) => b.posicao === posicao && b.ativo);
-  },
-
-  async getArticles() {
-    return (await readDB()).articles;
-  },
-  async getArticleById(id: string) {
-    return (await this.getArticles()).find((a) => a.id === id);
-  },
-  async getArticlesByCategory(slug: string) {
-    return (await this.getArticles()).filter((a) => a.categoria === slug);
-  },
-  async replaceArticles(articles: Artigo[]) {
-    const db = await readDB();
-    db.articles = articles;
-    await writeDB(db);
-  },
-
-  async addSubscriber(email: string) {
-    const db = await readDB();
-    if (!db.newsletter.find((n) => n.email === email)) {
-      db.newsletter.push({ email, criadoEm: new Date().toISOString() });
-      await writeDB(db);
+  async setCategories(categories: Categoria[]): Promise<void> {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM categories");
+      for (const c of categories) {
+        await client.query(
+          "INSERT INTO categories (slug, nome, cor) VALUES ($1,$2,$3)",
+          [c.slug, c.nome, c.cor]
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
     }
   },
-  async getSubscribers() {
-    return (await readDB()).newsletter;
+
+  // ---------- Fontes RSS ----------
+  async getSources(): Promise<Fonte[]> {
+    const { rows } = await getPool().query(
+      "SELECT id, nome, url, categoria, ativo FROM sources ORDER BY nome ASC"
+    );
+    return rows;
+  },
+
+  async setSources(sources: Fonte[]): Promise<void> {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM sources");
+      for (const s of sources) {
+        await client.query(
+          "INSERT INTO sources (id, nome, url, categoria, ativo) VALUES ($1,$2,$3,$4,$5)",
+          [s.id, s.nome, s.url, s.categoria, s.ativo]
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // ---------- Banners ----------
+  async getBanners(): Promise<Banner[]> {
+    const { rows } = await getPool().query(
+      "SELECT id, posicao, tipo, slot_id, html, ativo FROM banners ORDER BY posicao ASC"
+    );
+    return rows.map(bannerFromRow);
+  },
+
+  async setBanners(banners: Banner[]): Promise<void> {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      await client.query("DELETE FROM banners");
+      for (const b of banners) {
+        await client.query(
+          "INSERT INTO banners (id, posicao, tipo, slot_id, html, ativo) VALUES ($1,$2,$3,$4,$5,$6)",
+          [b.id, b.posicao, b.tipo, b.slotId ?? null, b.html ?? null, b.ativo]
+        );
+      }
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  async getBanner(posicao: string): Promise<Banner | undefined> {
+    const { rows } = await getPool().query(
+      "SELECT id, posicao, tipo, slot_id, html, ativo FROM banners WHERE posicao = $1 AND ativo = true LIMIT 1",
+      [posicao]
+    );
+    return rows[0] ? bannerFromRow(rows[0]) : undefined;
+  },
+
+  // ---------- Artigos ----------
+  async getArticles(): Promise<Artigo[]> {
+    const { rows } = await getPool().query(
+      "SELECT * FROM articles ORDER BY publicado_em DESC LIMIT 500"
+    );
+    return rows.map(artigoFromRow);
+  },
+
+  async getArticleById(id: string): Promise<Artigo | undefined> {
+    const { rows } = await getPool().query("SELECT * FROM articles WHERE id = $1", [id]);
+    return rows[0] ? artigoFromRow(rows[0]) : undefined;
+  },
+
+  async getArticlesByCategory(slug: string): Promise<Artigo[]> {
+    const { rows } = await getPool().query(
+      "SELECT * FROM articles WHERE categoria = $1 ORDER BY publicado_em DESC",
+      [slug]
+    );
+    return rows.map(artigoFromRow);
+  },
+
+  // Faz "upsert" de cada artigo novo/atualizado e mantém só os 500 mais
+  // recentes — sem apagar o restante da tabela a cada atualização de RSS.
+  async replaceArticles(articles: Artigo[]): Promise<void> {
+    const client = await getPool().connect();
+    try {
+      await client.query("BEGIN");
+      for (const a of articles) {
+        await client.query(
+          `INSERT INTO articles (id, titulo, resumo, link, imagem, categoria, fonte, publicado_em)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+           ON CONFLICT (id) DO UPDATE SET
+             titulo = EXCLUDED.titulo,
+             resumo = EXCLUDED.resumo,
+             link = EXCLUDED.link,
+             imagem = EXCLUDED.imagem,
+             categoria = EXCLUDED.categoria,
+             fonte = EXCLUDED.fonte,
+             publicado_em = EXCLUDED.publicado_em`,
+          [a.id, a.titulo, a.resumo, a.link, a.imagem ?? null, a.categoria, a.fonte, a.publicadoEm]
+        );
+      }
+      // mantém a tabela enxuta: remove tudo além dos 500 mais recentes
+      await client.query(`
+        DELETE FROM articles WHERE id NOT IN (
+          SELECT id FROM articles ORDER BY publicado_em DESC LIMIT 500
+        )
+      `);
+      await client.query("COMMIT");
+    } catch (err) {
+      await client.query("ROLLBACK");
+      throw err;
+    } finally {
+      client.release();
+    }
+  },
+
+  // ---------- Newsletter ----------
+  async addSubscriber(email: string): Promise<void> {
+    await getPool().query(
+      "INSERT INTO newsletter (email) VALUES ($1) ON CONFLICT (email) DO NOTHING",
+      [email]
+    );
+  },
+
+  async getSubscribers(): Promise<Inscrito[]> {
+    const { rows } = await getPool().query(
+      "SELECT email, criado_em FROM newsletter ORDER BY criado_em DESC"
+    );
+    return rows.map((r: any) => ({
+      email: r.email,
+      criadoEm: new Date(r.criado_em).toISOString()
+    }));
   }
 };
