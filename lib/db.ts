@@ -17,9 +17,6 @@ export type Artigo = {
 };
 export type Inscrito = { email: string; criadoEm: string };
 
-// Pool de conexões reutilizado entre requisições (padrão recomendado para
-// Next.js em ambiente serverless/long-running). Em dev, guardamos no
-// objeto global para sobreviver ao hot-reload sem esgotar conexões.
 declare global {
   // eslint-disable-next-line no-var
   var __pgPool: pg.Pool | undefined;
