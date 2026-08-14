@@ -31,7 +31,7 @@ export default function Error({
           >
             Tentar novamente
           </button>
-          
+          <a
             href="/"
             className="border border-line px-5 py-2.5 rounded-sm font-semibold text-sm hover:border-alert transition-colors"
           >
