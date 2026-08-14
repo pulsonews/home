@@ -7,7 +7,7 @@ import ArticleCard from "@/components/ArticleCard";
 import { database } from "@/lib/db";
 import type { Metadata } from "next";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 async function getData(id: string) {
   const artigo = await database.getArticleById(id);
