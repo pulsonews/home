@@ -34,7 +34,7 @@ export default function RootLayout({
   const adsenseClient = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <head>
         {adsenseClient && (
           <Script
@@ -45,7 +45,10 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className={`${display.variable} ${body.variable} ${ui.variable} font-body bg-paper text-charcoal`}>
+      <body
+        className={`${display.variable} ${body.variable} ${ui.variable} font-body bg-paper text-charcoal`}
+        suppressHydrationWarning
+      >
         {children}
         <AdSenseInit />
       </body>
