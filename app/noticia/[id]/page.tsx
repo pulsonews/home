@@ -4,6 +4,7 @@ import Footer from "@/components/Footer";
 import AdBanner from "@/components/AdBanner";
 import ShareButtons from "@/components/ShareButtons";
 import ArticleCard from "@/components/ArticleCard";
+import { FormattedDateTime } from "@/components/RelativeTime";
 import { database } from "@/lib/db";
 import type { Metadata } from "next";
 
@@ -58,8 +59,7 @@ export default async function NoticiaPage({
           {artigo.titulo}
         </h1>
         <p className="font-ui text-sm text-charcoal/50 mb-6">
-          Fonte: {artigo.fonte} ·{" "}
-          {new Date(artigo.publicadoEm).toLocaleString("pt-BR")}
+          Fonte: {artigo.fonte} · <FormattedDateTime dataISO={artigo.publicadoEm} />
         </p>
 
         {artigo.imagem && (
