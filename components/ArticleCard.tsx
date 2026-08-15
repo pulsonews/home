@@ -1,15 +1,6 @@
 import Link from "next/link";
 import type { Artigo } from "@/lib/db";
-
-function tempoRelativo(dataISO: string) {
-  const diffMs = Date.now() - new Date(dataISO).getTime();
-  const min = Math.floor(diffMs / 60000);
-  if (min < 1) return "agora";
-  if (min < 60) return `há ${min} min`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `há ${h}h`;
-  return `há ${Math.floor(h / 24)}d`;
-}
+import RelativeTime from "./RelativeTime";
 
 export default function ArticleCard({
   artigo,
@@ -59,7 +50,7 @@ export default function ArticleCard({
           </p>
         )}
         <div className="mt-auto pt-2 font-ui text-xs text-charcoal/50">
-          {artigo.fonte} · {tempoRelativo(artigo.publicadoEm)}
+          {artigo.fonte} · <RelativeTime dataISO={artigo.publicadoEm} />
         </div>
       </article>
     </Link>
