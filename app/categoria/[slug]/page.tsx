@@ -16,7 +16,11 @@ export default async function CategoriaPage({
   const categoria = categories.find((c) => c.slug === params.slug);
   if (!categoria) notFound();
 
-  const artigos = await database.getArticlesByCategory(params.slug);
+  const [artigos, mostrarSeloAutoral] = await Promise.all([
+    database.getArticlesByCategory(params.slug),
+    database.getSetting("mostrar_selo_autoral")
+  ]);
+  const seloAtivo = mostrarSeloAutoral === "true";
 
   return (
     <>
@@ -36,7 +40,7 @@ export default async function CategoriaPage({
         ) : (
           <div className="grid sm:grid-cols-3 gap-6">
             {artigos.slice(0, 3).map((a) => (
-              <ArticleCard key={a.id} artigo={a} />
+              <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
             ))}
           </div>
         )}
@@ -47,7 +51,7 @@ export default async function CategoriaPage({
 
         <div className="grid sm:grid-cols-3 gap-6">
           {artigos.slice(3).map((a) => (
-            <ArticleCard key={a.id} artigo={a} />
+            <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
           ))}
         </div>
       </main>
