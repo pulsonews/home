@@ -5,9 +5,19 @@ import pg from "pg";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
+function buildConnectionString() {
+  const raw = process.env.DATABASE_URL;
+  const quebrada = !raw || raw.includes("${{") || raw.trim() === "";
+  if (!quebrada) return raw;
+
+  const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
+  if (PGHOST && PGUSER && PGPASSWORD && PGDATABASE) {
+    const port = PGPORT || "5432";
+    return `postgresql://${encodeURIComponent(PGUSER)}:${encodeURIComponent(PGPASSWORD)}@${PGHOST}:${port}/${PGDATABASE}`;
+  }
+
   console.error(
-    "DATABASE_URL não definida. Configure-a (o Railway injeta essa variável automaticamente ao adicionar um Postgres ao projeto) e rode novamente."
+    `DATABASE_URL inválida ou vazia (valor: "${raw}") e variáveis PG* individuais incompletas.`
   );
   process.exit(1);
 }
@@ -16,7 +26,7 @@ const dir = path.dirname(fileURLToPath(import.meta.url));
 const sql = readFileSync(path.join(dir, "schema.sql"), "utf-8");
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: buildConnectionString(),
   ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
 });
 
