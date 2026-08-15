@@ -19,6 +19,7 @@ export type Artigo = {
   fonteOriginalId?: string;
   fonteOriginalLink?: string;
   geradoPor?: string;
+  status?: "publicado" | "rascunho";
 };
 export type Inscrito = { email: string; criadoEm: string };
 
@@ -95,7 +96,8 @@ function artigoFromRow(row: any): Artigo {
     conteudo: row.conteudo ?? undefined,
     fonteOriginalId: row.fonte_original_id ?? undefined,
     fonteOriginalLink: row.fonte_original_link ?? undefined,
-    geradoPor: row.gerado_por ?? undefined
+    geradoPor: row.gerado_por ?? undefined,
+    status: row.status === "rascunho" ? "rascunho" : "publicado"
   };
 }
 
@@ -193,13 +195,17 @@ export const database = {
   },
 
   // ---------- Artigos ----------
+  // Só retorna artigos publicados — usado pelas páginas públicas do site.
   async getArticles(): Promise<Artigo[]> {
     const { rows } = await getPool().query(
-      "SELECT * FROM articles ORDER BY publicado_em DESC LIMIT 500"
+      "SELECT * FROM articles WHERE status = 'publicado' ORDER BY publicado_em DESC LIMIT 500"
     );
     return rows.map(artigoFromRow);
   },
 
+  // Retorna qualquer artigo por id, independente do status — usado tanto
+  // pela página pública de notícia (permite pré-visualizar rascunhos por
+  // link direto) quanto pelo admin.
   async getArticleById(id: string): Promise<Artigo | undefined> {
     const { rows } = await getPool().query("SELECT * FROM articles WHERE id = $1", [id]);
     return rows[0] ? artigoFromRow(rows[0]) : undefined;
@@ -207,10 +213,57 @@ export const database = {
 
   async getArticlesByCategory(slug: string): Promise<Artigo[]> {
     const { rows } = await getPool().query(
-      "SELECT * FROM articles WHERE categoria = $1 ORDER BY publicado_em DESC",
+      "SELECT * FROM articles WHERE categoria = $1 AND status = 'publicado' ORDER BY publicado_em DESC",
       [slug]
     );
     return rows.map(artigoFromRow);
+  },
+
+  // Todos os artigos, de qualquer status — só para o painel administrativo.
+  async getAllArticlesAdmin(limit = 150): Promise<Artigo[]> {
+    const { rows } = await getPool().query(
+      "SELECT * FROM articles ORDER BY publicado_em DESC LIMIT $1",
+      [limit]
+    );
+    return rows.map(artigoFromRow);
+  },
+
+  async updateArticle(
+    id: string,
+    campos: Partial<Pick<Artigo, "titulo" | "resumo" | "conteudo" | "categoria" | "imagem" | "status">>
+  ): Promise<void> {
+    const colunas: string[] = [];
+    const valores: any[] = [];
+    let i = 1;
+
+    const mapa: Record<string, string> = {
+      titulo: "titulo",
+      resumo: "resumo",
+      conteudo: "conteudo",
+      categoria: "categoria",
+      imagem: "imagem",
+      status: "status"
+    };
+
+    for (const [chave, coluna] of Object.entries(mapa)) {
+      if (chave in campos) {
+        colunas.push(`${coluna} = $${i}`);
+        valores.push((campos as any)[chave] ?? null);
+        i++;
+      }
+    }
+
+    if (colunas.length === 0) return;
+
+    valores.push(id);
+    await getPool().query(
+      `UPDATE articles SET ${colunas.join(", ")} WHERE id = $${i}`,
+      valores
+    );
+  },
+
+  async deleteArticle(id: string): Promise<void> {
+    await getPool().query("DELETE FROM articles WHERE id = $1", [id]);
   },
 
   // Faz "upsert" de cada artigo novo/atualizado e mantém só os 500 mais
@@ -295,8 +348,8 @@ export const database = {
     geradoPor?: string;
   }): Promise<void> {
     await getPool().query(
-      `INSERT INTO articles (id, titulo, resumo, link, imagem, categoria, fonte, publicado_em, autoral, conteudo, fonte_original_id, fonte_original_link, gerado_por)
-       VALUES ($1,$2,$3,$4,$5,$6,$7, now(), true, $8, $9, $10, $11)`,
+      `INSERT INTO articles (id, titulo, resumo, link, imagem, categoria, fonte, publicado_em, autoral, conteudo, fonte_original_id, fonte_original_link, gerado_por, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, now(), true, $8, $9, $10, $11, 'rascunho')`,
       [
         data.id,
         data.titulo,

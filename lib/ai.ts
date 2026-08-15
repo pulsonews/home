@@ -12,7 +12,8 @@ async function getChave(chaveConfig: string, envVar: string): Promise<string | n
   return process.env[envVar] || null;
 }
 
-const SYSTEM_PROMPT = `Você é um jornalista da redação do "Pulso Notícias", um portal brasileiro de notícias.
+function montarSystemPrompt(citarFonte: boolean) {
+  return `Você é um jornalista da redação do "Pulso Notícias", um portal brasileiro de notícias.
 
 Sua tarefa é escrever uma matéria ORIGINAL e AUTORAL a partir do resumo de uma notícia de outra fonte, que será fornecido pelo usuário.
 
@@ -21,7 +22,11 @@ REGRAS OBRIGATÓRIAS:
 2. NUNCA copie frases ou trechos literais do resumo original. Reescreva tudo com suas próprias palavras e estrutura de texto.
 3. Adicione contexto, explicação e análise que ajudem o leitor a entender a notícia (histórico do tema, o que pode vir a seguir, por que aquilo importa) — mas deixe claro quando algo é interpretação/contexto e quando é fato relatado.
 4. Não tome partido político nem faça juízo de valor sobre pessoas ou grupos. Mantenha tom jornalístico neutro.
-5. Sempre mencione, no corpo do texto, que a apuração original é de [nome da fonte], de forma natural (ex: "Segundo apuração do [fonte]...").
+5. ${
+    citarFonte
+      ? 'Sempre mencione, no corpo do texto, que a apuração original é de [nome da fonte], de forma natural (ex: "Segundo apuração do [fonte]...").'
+      : "Escreva o texto de forma independente, sem citar nominalmente a fonte de onde a informação veio (nem no corpo, nem em rodapé)."
+  }
 6. Se o resumo fornecido for curto ou vago demais para sustentar uma matéria completa e precisa, escreva um texto mais curto mas ainda assim inteiramente factual — nunca preencha lacunas com invenção.
 
 FORMATO DA RESPOSTA:
@@ -31,6 +36,7 @@ Responda SOMENTE com um JSON válido, sem markdown, sem texto antes ou depois, n
 - "titulo": manchete original (não copie o título da fonte).
 - "resumo": 1-2 frases, para uso como linha de apoio/chamada.
 - "corpo": array de parágrafos (strings) em português, sem tags HTML.`;
+}
 
 type Resultado = { titulo: string; resumo: string; corpo: string[] };
 
@@ -57,7 +63,7 @@ function extrairJSON(texto: string): Resultado {
   return parsed;
 }
 
-async function gerarComClaude(artigo: Artigo): Promise<Resultado> {
+async function gerarComClaude(artigo: Artigo, citarFonte: boolean): Promise<Resultado> {
   const apiKey = await getChave("anthropic_api_key", "ANTHROPIC_API_KEY");
   if (!apiKey) {
     throw new Error(
@@ -75,7 +81,7 @@ async function gerarComClaude(artigo: Artigo): Promise<Resultado> {
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: 2000,
-      system: SYSTEM_PROMPT,
+      system: montarSystemPrompt(citarFonte),
       messages: [{ role: "user", content: montarPromptUsuario(artigo) }]
     })
   });
@@ -91,7 +97,7 @@ async function gerarComClaude(artigo: Artigo): Promise<Resultado> {
   return extrairJSON(textBlock.text);
 }
 
-async function gerarComGemini(artigo: Artigo): Promise<Resultado> {
+async function gerarComGemini(artigo: Artigo, citarFonte: boolean): Promise<Resultado> {
   const apiKey = await getChave("gemini_api_key", "GEMINI_API_KEY");
   if (!apiKey) {
     throw new Error(
@@ -105,7 +111,7 @@ async function gerarComGemini(artigo: Artigo): Promise<Resultado> {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+      systemInstruction: { parts: [{ text: montarSystemPrompt(citarFonte) }] },
       contents: [{ role: "user", parts: [{ text: montarPromptUsuario(artigo) }] }],
       generationConfig: {
         temperature: 0.4,
@@ -133,8 +139,9 @@ async function gerarComGemini(artigo: Artigo): Promise<Resultado> {
  */
 export async function gerarMateriaAutoral(
   artigo: Artigo,
-  provedor: ProvedorIA = "claude"
+  provedor: ProvedorIA = "claude",
+  citarFonte: boolean = true
 ): Promise<Resultado> {
-  if (provedor === "gemini") return gerarComGemini(artigo);
-  return gerarComClaude(artigo);
+  if (provedor === "gemini") return gerarComGemini(artigo, citarFonte);
+  return gerarComClaude(artigo, citarFonte);
 }
