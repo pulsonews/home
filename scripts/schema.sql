@@ -54,6 +54,7 @@ ALTER TABLE articles ADD COLUMN IF NOT EXISTS conteudo TEXT;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS fonte_original_id TEXT;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS fonte_original_link TEXT;
 ALTER TABLE articles ADD COLUMN IF NOT EXISTS gerado_por TEXT;
+ALTER TABLE articles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'publicado';
 
 -- Configurações gerais do site (chave/valor), editáveis pelo admin.
 CREATE TABLE IF NOT EXISTS settings (
