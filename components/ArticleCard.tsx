@@ -4,10 +4,12 @@ import RelativeTime from "./RelativeTime";
 
 export default function ArticleCard({
   artigo,
-  destaque = false
+  destaque = false,
+  mostrarSeloAutoral = false
 }: {
   artigo: Artigo;
   destaque?: boolean;
+  mostrarSeloAutoral?: boolean;
 }) {
   return (
     <Link
@@ -36,7 +38,7 @@ export default function ArticleCard({
           <span className="absolute top-2 left-2 -rotate-3 bg-ink text-paper font-ui text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-sm">
             {artigo.categoria}
           </span>
-          {artigo.autoral && (
+          {mostrarSeloAutoral && artigo.autoral && (
             <span className="absolute top-2 right-2 rotate-2 bg-gold text-ink font-ui text-[10px] font-bold uppercase tracking-wider px-2 py-1 shadow-sm">
               Autoral
             </span>
