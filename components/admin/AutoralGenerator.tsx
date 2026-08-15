@@ -8,9 +8,13 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
   const [feitos, setFeitos] = useState<Record<string, string>>({});
   const [erros, setErros] = useState<Record<string, string>>({});
   const [provedor, setProvedor] = useState<Record<string, "claude" | "gemini">>({});
+  const [citarFonte, setCitarFonte] = useState<Record<string, boolean>>({});
 
   function provedorDe(id: string) {
     return provedor[id] || "claude";
+  }
+  function citarFonteDe(id: string) {
+    return citarFonte[id] ?? true;
   }
 
   async function gerar(artigo: Artigo) {
@@ -20,7 +24,11 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
       const res = await fetch("/api/admin/autoral", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ articleId: artigo.id, provedor: provedorDe(artigo.id) })
+        body: JSON.stringify({
+          articleId: artigo.id,
+          provedor: provedorDe(artigo.id),
+          citarFonte: citarFonteDe(artigo.id)
+        })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.erro || "Falha ao gerar");
@@ -40,7 +48,8 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
             <tr>
               <th className="p-3">Notícia agregada</th>
               <th className="p-3">Categoria</th>
-              <th className="p-3">Motor de IA</th>
+              <th className="p-3">Motor</th>
+              <th className="p-3">Citar fonte</th>
               <th className="p-3"></th>
             </tr>
           </thead>
@@ -76,6 +85,20 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
                     </select>
                   )}
                 </td>
+                <td className="p-3">
+                  {!feitos[a.id] && (
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={citarFonteDe(a.id)}
+                        onChange={(e) =>
+                          setCitarFonte((prev) => ({ ...prev, [a.id]: e.target.checked }))
+                        }
+                      />
+                      Citar
+                    </label>
+                  )}
+                </td>
                 <td className="p-3 text-right">
                   {feitos[a.id] ? (
                     <a
@@ -83,7 +106,7 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
                       target="_blank"
                       className="text-alert text-xs font-semibold underline"
                     >
-                      Ver matéria gerada →
+                      Ver rascunho gerado →
                     </a>
                   ) : (
                     <button
@@ -99,7 +122,7 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
             ))}
             {candidatos.length === 0 && (
               <tr>
-                <td colSpan={4} className="p-6 text-center text-charcoal/50">
+                <td colSpan={5} className="p-6 text-center text-charcoal/50">
                   Nenhuma notícia agregada disponível ainda. Atualize o RSS primeiro.
                 </td>
               </tr>
@@ -107,6 +130,13 @@ export default function AutoralGenerator({ candidatos }: { candidatos: Artigo[] 
           </tbody>
         </table>
       </div>
+      <p className="text-xs text-charcoal/40 mt-3">
+        A matéria gerada nasce como <strong>rascunho</strong> — vá em{" "}
+        <a href="/admin/noticias" className="underline hover:text-alert">
+          Notícias
+        </a>{" "}
+        para revisar, editar e aprovar antes de publicar.
+      </p>
     </div>
   );
 }
