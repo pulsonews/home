@@ -42,9 +42,15 @@ export default async function NoticiaPage({
 }: {
   params: { id: string };
 }) {
-  const data = await getData(params.id);
+  const [data, mostrarAvisoIA, mostrarSeloAutoral] = await Promise.all([
+    getData(params.id),
+    database.getSetting("mostrar_aviso_ia"),
+    database.getSetting("mostrar_selo_autoral")
+  ]);
   if (!data) notFound();
   const { artigo, relacionadas } = data;
+  const avisoAtivo = mostrarAvisoIA === "true";
+  const seloAtivo = mostrarSeloAutoral === "true";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "";
   const urlCompleta = `${siteUrl}/noticia/${artigo.id}`;
 
@@ -62,7 +68,7 @@ export default async function NoticiaPage({
           Fonte: {artigo.fonte} · <FormattedDateTime dataISO={artigo.publicadoEm} />
         </p>
 
-        {artigo.autoral ? (
+        {artigo.autoral && avisoAtivo ? (
           <div className="mb-6 bg-gold/10 border border-gold/40 rounded-sm px-4 py-3 font-ui text-sm text-charcoal/80">
             <strong className="text-gold">Matéria autoral do Pulso.</strong>{" "}
             Texto original elaborado com apoio de{" "}
@@ -131,7 +137,7 @@ export default async function NoticiaPage({
             </h2>
             <div className="grid sm:grid-cols-3 gap-6">
               {relacionadas.map((a) => (
-                <ArticleCard key={a.id} artigo={a} />
+                <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
               ))}
             </div>
           </section>
