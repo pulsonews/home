@@ -17,20 +17,48 @@ export type Artigo = {
 };
 export type Inscrito = { email: string; criadoEm: string };
 
+// Pool de conexões reutilizado entre requisições (padrão recomendado para
+// Next.js em ambiente serverless/long-running). Em dev, guardamos no
+// objeto global para sobreviver ao hot-reload sem esgotar conexões.
 declare global {
   // eslint-disable-next-line no-var
   var __pgPool: pg.Pool | undefined;
 }
 
-function getPool() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error(
-      "DATABASE_URL não definida. Configure a variável de ambiente (o Railway injeta automaticamente ao adicionar um serviço PostgreSQL ao projeto)."
-    );
+function buildConnectionString(): string {
+  const raw = process.env.DATABASE_URL;
+
+  // Detecta o caso mais comum de configuração quebrada no Railway: a
+  // variável ficou com o texto literal da referência (ex: "${{Postgres.DATABASE_URL}}")
+  // porque o nome do serviço na referência não bateu com o nome real do
+  // serviço Postgres. Nesse caso, tentamos montar a URL a partir das
+  // variáveis individuais (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE),
+  // que o Railway também expõe e raramente têm esse problema.
+  const pareceReferenciaQuebrada = !raw || raw.includes("${{") || raw.trim() === "";
+
+  if (!pareceReferenciaQuebrada) {
+    return raw as string;
   }
+
+  const { PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE } = process.env;
+
+  if (PGHOST && PGUSER && PGPASSWORD && PGDATABASE) {
+    const port = PGPORT || "5432";
+    return `postgresql://${encodeURIComponent(PGUSER)}:${encodeURIComponent(PGPASSWORD)}@${PGHOST}:${port}/${PGDATABASE}`;
+  }
+
+  throw new Error(
+    "Configuração de banco inválida: a variável DATABASE_URL está vazia ou contém uma referência não resolvida " +
+      `(valor atual: "${raw}"), e as variáveis individuais PGHOST/PGUSER/PGPASSWORD/PGDATABASE também não estão ` +
+      "todas definidas neste serviço. No Railway, vá em Variables e configure DATABASE_URL colando o valor REAL " +
+      "copiado da aba 'Connect' do serviço Postgres (não uma referência ${{...}})."
+  );
+}
+
+function getPool() {
   if (!global.__pgPool) {
     global.__pgPool = new Pool({
-      connectionString: process.env.DATABASE_URL,
+      connectionString: buildConnectionString(),
       ssl: process.env.PGSSLMODE === "disable" ? false : { rejectUnauthorized: false }
     });
   }
