@@ -22,11 +22,12 @@ export default async function AutoraisPage() {
           original é sempre citada no texto e linkada na página da matéria.
         </p>
         <p className="font-ui text-xs text-charcoal/40 mb-8">
-          Requer pelo menos uma das chaves configuradas:{" "}
-          <code>ANTHROPIC_API_KEY</code> (para usar o Claude) ou{" "}
-          <code>GEMINI_API_KEY</code> (para usar o Gemini). Escolha o motor
-          na lista antes de gerar cada matéria. Cada geração consome
-          créditos da conta correspondente.
+          Requer pelo menos uma chave configurada em{" "}
+          <a href="/admin/integracoes" className="underline hover:text-alert">
+            Admin → Integrações
+          </a>{" "}
+          (Claude ou Gemini). Escolha o motor na lista antes de gerar cada
+          matéria. Cada geração consome créditos da conta correspondente.
         </p>
         <AutoralGenerator candidatos={candidatos} />
       </main>
