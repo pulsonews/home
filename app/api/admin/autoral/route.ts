@@ -11,12 +11,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
   }
 
-  const { articleId, provedor } = await req.json().catch(() => ({ articleId: null, provedor: "claude" }));
+  const { articleId, provedor, citarFonte } = await req
+    .json()
+    .catch(() => ({ articleId: null, provedor: "claude", citarFonte: true }));
+
   if (!articleId) {
     return NextResponse.json({ erro: "articleId é obrigatório" }, { status: 400 });
   }
 
   const engineEscolhido: ProvedorIA = provedor === "gemini" ? "gemini" : "claude";
+  const deveCitarFonte = citarFonte !== false;
 
   const original = await database.getArticleById(articleId);
   if (!original) {
@@ -24,7 +28,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const gerado = await gerarMateriaAutoral(original, engineEscolhido);
+    const gerado = await gerarMateriaAutoral(original, engineEscolhido, deveCitarFonte);
     const novoId = `autoral-${crypto.randomBytes(8).toString("hex")}`;
 
     await database.createAutoralArticle({
@@ -35,7 +39,7 @@ export async function POST(req: NextRequest) {
       imagem: original.imagem,
       categoria: original.categoria,
       fonteOriginalId: original.id,
-      fonteOriginalLink: original.link,
+      fonteOriginalLink: deveCitarFonte ? original.link : undefined,
       geradoPor: engineEscolhido
     });
 
