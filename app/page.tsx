@@ -8,10 +8,12 @@ import { database } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [articles, categories] = await Promise.all([
+  const [articles, categories, mostrarSeloAutoral] = await Promise.all([
     database.getArticles(),
-    database.getCategories()
+    database.getCategories(),
+    database.getSetting("mostrar_selo_autoral")
   ]);
+  const seloAtivo = mostrarSeloAutoral === "true";
 
   const destaque = articles[0];
   const restante = articles.slice(1);
@@ -29,9 +31,9 @@ export default async function HomePage() {
         ) : (
           <>
             <section className="grid sm:grid-cols-3 gap-6">
-              {destaque && <ArticleCard artigo={destaque} destaque />}
+              {destaque && <ArticleCard artigo={destaque} destaque mostrarSeloAutoral={seloAtivo} />}
               {primeiroBloco.map((a) => (
-                <ArticleCard key={a.id} artigo={a} />
+                <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
               ))}
             </section>
 
@@ -59,7 +61,7 @@ export default async function HomePage() {
                   </div>
                   <div className="grid sm:grid-cols-4 gap-6">
                     {items.map((a) => (
-                      <ArticleCard key={a.id} artigo={a} />
+                      <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
                     ))}
                   </div>
                 </section>
@@ -69,7 +71,7 @@ export default async function HomePage() {
             {segundoBloco.length > 0 && (
               <section className="grid sm:grid-cols-3 gap-6 mb-12">
                 {segundoBloco.map((a) => (
-                  <ArticleCard key={a.id} artigo={a} />
+                  <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
                 ))}
               </section>
             )}
