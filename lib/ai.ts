@@ -4,7 +4,7 @@ import { database } from "./db";
 export type ProvedorIA = "claude" | "gemini";
 
 const CLAUDE_MODEL = "claude-sonnet-4-6";
-const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 async function getChave(chaveConfig: string, envVar: string): Promise<string | null> {
   const daBase = await database.getSetting(chaveConfig);
