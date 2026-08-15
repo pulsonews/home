@@ -1,13 +1,9 @@
 import Link from "next/link";
 import { database } from "@/lib/db";
+import LiveDate from "./LiveDate";
 
 export default async function Header() {
   const categories = await database.getCategories();
-  const agora = new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "2-digit",
-    month: "long"
-  });
 
   return (
     <header className="sticky top-0 z-40 bg-paper/95 backdrop-blur border-b border-line">
@@ -21,7 +17,7 @@ export default async function Header() {
             </span>
             AO VIVO
           </span>
-          <span className="capitalize opacity-80 shrink-0">{agora}</span>
+          <LiveDate />
           <span className="opacity-50 hidden sm:inline">
             · Atualizado automaticamente via RSS
           </span>
