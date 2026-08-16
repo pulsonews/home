@@ -3,6 +3,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import AdBanner from "@/components/AdBanner";
+import ViewTracker from "@/components/ViewTracker";
 import { database } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function CategoriaPage({
 
   return (
     <>
+      <ViewTracker />
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <h1
