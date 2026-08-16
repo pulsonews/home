@@ -2,7 +2,11 @@ import Link from "next/link";
 import { database } from "@/lib/db";
 
 export default async function Footer() {
-  const nomeConfigurado = await database.getSetting("nome_site");
+  const [nomeConfigurado, whatsappUrl, instagramUrl] = await Promise.all([
+    database.getSetting("nome_site"),
+    database.getSetting("whatsapp_url"),
+    database.getSetting("instagram_url")
+  ]);
   const nomeSite = nomeConfigurado || "PULSO";
 
   return (
@@ -35,16 +39,33 @@ export default async function Footer() {
             Siga o Pulso
           </div>
           <ul className="space-y-1 opacity-70">
-            <li>WhatsApp Channel</li>
-            <li>Instagram</li>
+            <li>
+              {whatsappUrl ? (
+                <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  WhatsApp Channel
+                </a>
+              ) : (
+                "WhatsApp Channel"
+              )}
+            </li>
+            <li>
+              {instagramUrl ? (
+                <a href={instagramUrl} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                  Instagram
+                </a>
+              ) : (
+                "Instagram"
+              )}
+            </li>
             <li>X (Twitter)</li>
             <li>Facebook</li>
           </ul>
         </div>
       </div>
       <div className="border-t border-white/10 py-4 text-center text-xs opacity-50 font-ui">
-        © {new Date().getFullYear()} Pulso Notícias. Conteúdo de terceiros
-        agregado via RSS — os direitos autorais pertencem às fontes originais.
+        © {new Date().getFullYear()} {nomeSite} Notícias. Conteúdo de
+        terceiros agregado via RSS — os direitos autorais pertencem às
+        fontes originais.
       </div>
     </footer>
   );
