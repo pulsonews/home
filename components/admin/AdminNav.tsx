@@ -6,10 +6,12 @@ import { usePathname, useRouter } from "next/navigation";
 const links = [
   { href: "/admin", label: "Visão geral" },
   { href: "/admin/noticias", label: "Notícias" },
+  { href: "/admin/estatisticas", label: "Estatísticas" },
   { href: "/admin/fontes", label: "Fontes RSS" },
   { href: "/admin/categorias", label: "Categorias" },
   { href: "/admin/banners", label: "Banners" },
   { href: "/admin/autorais", label: "Matérias autorais" },
+  { href: "/admin/personalizacao", label: "Personalização" },
   { href: "/admin/integracoes", label: "Integrações" },
   { href: "/admin/newsletter", label: "Newsletter" }
 ];
