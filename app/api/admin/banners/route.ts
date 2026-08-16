@@ -2,26 +2,42 @@ import { NextRequest, NextResponse } from "next/server";
 import { database, type Banner } from "@/lib/db";
 import { isAuthenticated } from "@/lib/auth";
 
-function guard() {
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   if (!isAuthenticated()) {
     return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
   }
-  return null;
+
+  const body = (await req.json()) as Partial<Banner>;
+  const camposPermitidos: (keyof Banner)[] = [
+    "posicao",
+    "tipo",
+    "slotId",
+    "html",
+    "ativo",
+    "nome",
+    "dataInicio",
+    "dataFim",
+    "maxImpressoes"
+  ];
+  const campos: Partial<Banner> = {};
+  for (const campo of camposPermitidos) {
+    if (campo in body) (campos as any)[campo] = body[campo];
+  }
+
+  await database.updateBanner(params.id, campos);
+  return NextResponse.json({ ok: true });
 }
 
-export async function GET() {
-  const blocked = guard();
-  if (blocked) return blocked;
-  return NextResponse.json(await database.getBanners());
-}
-
-export async function POST(req: NextRequest) {
-  const blocked = guard();
-  if (blocked) return blocked;
-
-  const body = (await req.json()) as Banner;
-  const banners = await database.getBanners();
-  const semDuplicata = banners.filter((b) => b.id !== body.id);
-  await database.setBanners([...semDuplicata, body]);
-  return NextResponse.json({ ok: true, banner: body });
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  if (!isAuthenticated()) {
+    return NextResponse.json({ erro: "Não autenticado" }, { status: 401 });
+  }
+  await database.deleteBanner(params.id);
+  return NextResponse.json({ ok: true });
 }
