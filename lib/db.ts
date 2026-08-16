@@ -364,5 +364,31 @@ export const database = {
         data.geradoPor ?? null
       ]
     );
+  },
+
+  async createManualArticle(data: {
+    id: string;
+    titulo: string;
+    resumo: string;
+    conteudo: string;
+    imagem?: string;
+    categoria: string;
+    status: "publicado" | "rascunho";
+  }): Promise<void> {
+    await getPool().query(
+      `INSERT INTO articles (id, titulo, resumo, link, imagem, categoria, fonte, publicado_em, autoral, conteudo, status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7, now(), true, $8, $9)`,
+      [
+        data.id,
+        data.titulo,
+        data.resumo,
+        "",
+        data.imagem ?? null,
+        data.categoria,
+        "Pulso Notícias",
+        data.conteudo,
+        data.status
+      ]
+    );
   }
 };
