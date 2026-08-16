@@ -71,3 +71,10 @@ CREATE TABLE IF NOT EXISTS page_views (
 );
 CREATE INDEX IF NOT EXISTS idx_page_views_article ON page_views (article_id);
 CREATE INDEX IF NOT EXISTS idx_page_views_criado_em ON page_views (criado_em);
+
+-- Agendamento e limite de impressões dos banners.
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS nome TEXT;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS data_inicio TIMESTAMPTZ;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS data_fim TIMESTAMPTZ;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS max_impressoes INTEGER;
+ALTER TABLE banners ADD COLUMN IF NOT EXISTS impressoes INTEGER NOT NULL DEFAULT 0;
