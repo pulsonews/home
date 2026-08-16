@@ -5,6 +5,7 @@ import AdBanner from "@/components/AdBanner";
 import ShareButtons from "@/components/ShareButtons";
 import ArticleCard from "@/components/ArticleCard";
 import { FormattedDateTime } from "@/components/RelativeTime";
+import ViewTracker from "@/components/ViewTracker";
 import { database } from "@/lib/db";
 import type { Metadata } from "next";
 
@@ -56,6 +57,7 @@ export default async function NoticiaPage({
 
   return (
     <>
+      <ViewTracker articleId={artigo.id} />
       <Header />
       <main className="mx-auto max-w-4xl px-4 py-8">
         <span className="font-ui text-xs uppercase tracking-wide text-alert font-semibold">
