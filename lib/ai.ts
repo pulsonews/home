@@ -28,6 +28,7 @@ REGRAS OBRIGATÓRIAS:
       : "Escreva o texto de forma independente, sem citar nominalmente a fonte de onde a informação veio (nem no corpo, nem em rodapé)."
   }
 6. Se o resumo fornecido for curto ou vago demais para sustentar uma matéria completa e precisa, escreva um texto mais curto mas ainda assim inteiramente factual — nunca preencha lacunas com invenção.
+7. O texto final deve ser SEMPRE em português do Brasil, não importa em que idioma o resumo/apuração original foi fornecido. Se a fonte estiver em outro idioma (inglês, espanhol, etc.), traduza e adapte o conteúdo de forma natural e fluida para o leitor brasileiro — não faça uma tradução literal/palavra-por-palavra, escreva como um jornalista brasileiro escreveria a mesma informação. Nomes próprios, siglas e termos técnicos sem tradução usual permanecem no idioma original.
 
 FORMATO DA RESPOSTA:
 Responda SOMENTE com um JSON válido, sem markdown, sem texto antes ou depois, no formato exato:
