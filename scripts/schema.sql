@@ -61,3 +61,13 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- Registro de visualizações, usado para estatísticas no admin.
+CREATE TABLE IF NOT EXISTS page_views (
+  id         BIGSERIAL PRIMARY KEY,
+  path       TEXT NOT NULL,
+  article_id TEXT,
+  criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_page_views_article ON page_views (article_id);
+CREATE INDEX IF NOT EXISTS idx_page_views_criado_em ON page_views (criado_em);
