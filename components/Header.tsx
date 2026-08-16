@@ -3,7 +3,12 @@ import { database } from "@/lib/db";
 import LiveDate from "./LiveDate";
 
 export default async function Header() {
-  const categories = await database.getCategories();
+  const [categories, logoUrl, nomeConfigurado] = await Promise.all([
+    database.getCategories(),
+    database.getSetting("logo_url"),
+    database.getSetting("nome_site")
+  ]);
+  const nomeSite = nomeConfigurado || "PULSO";
 
   return (
     <header className="sticky top-0 z-40 bg-paper/95 backdrop-blur border-b border-line">
@@ -26,12 +31,19 @@ export default async function Header() {
 
       <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
         <Link href="/" className="flex items-baseline gap-2">
-          <span className="font-display text-3xl tracking-tight text-ink">
-            PULSO
-          </span>
-          <span className="font-ui text-[10px] uppercase tracking-[0.2em] text-alert font-semibold">
-            notícias
-          </span>
+          {logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={logoUrl} alt={nomeSite} className="h-9 w-auto" />
+          ) : (
+            <>
+              <span className="font-display text-3xl tracking-tight text-ink">
+                {nomeSite}
+              </span>
+              <span className="font-ui text-[10px] uppercase tracking-[0.2em] text-alert font-semibold">
+                notícias
+              </span>
+            </>
+          )}
         </Link>
 
         <Link
@@ -43,6 +55,12 @@ export default async function Header() {
       </div>
 
       <nav className="mx-auto max-w-6xl px-4 pb-2 flex gap-5 overflow-x-auto font-ui text-sm">
+        <Link
+          href="/noticias"
+          className="whitespace-nowrap uppercase tracking-wide font-semibold text-alert pb-1 border-b-2 border-transparent hover:border-alert"
+        >
+          Todas
+        </Link>
         {categories.map((c) => (
           <Link
             key={c.slug}
