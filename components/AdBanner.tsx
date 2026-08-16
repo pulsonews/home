@@ -1,4 +1,5 @@
 import { database } from "@/lib/db";
+import BannerImpressionTracker from "./BannerImpressionTracker";
 
 const SIZES: Record<string, string> = {
   topo: "min-h-[90px]",
@@ -8,7 +9,7 @@ const SIZES: Record<string, string> = {
 };
 
 export default async function AdBanner({ posicao }: { posicao: string }) {
-  const banner = await database.getBanner(posicao);
+  const banner = await database.getBannerParaExibir(posicao);
   const client = process.env.NEXT_PUBLIC_ADSENSE_CLIENT;
 
   if (!banner) return null;
@@ -18,6 +19,7 @@ export default async function AdBanner({ posicao }: { posicao: string }) {
       className={`w-full ${SIZES[posicao] || "min-h-[100px]"} flex items-center justify-center bg-white border border-dashed border-line rounded-sm overflow-hidden`}
       data-ad-position={posicao}
     >
+      <BannerImpressionTracker bannerId={banner.id} />
       {banner.tipo === "adsense" && client ? (
         <ins
           className="adsbygoogle block w-full h-full"
