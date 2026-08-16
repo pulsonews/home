@@ -390,5 +390,50 @@ export const database = {
         data.status
       ]
     );
+  },
+
+  // ---------- Página "todas as notícias" ----------
+  async getArticlesPaginated(pagina: number, porPagina = 24) {
+    const offset = (pagina - 1) * porPagina;
+    const [{ rows }, { rows: totalRows }] = await Promise.all([
+      getPool().query(
+        "SELECT * FROM articles WHERE status = 'publicado' ORDER BY publicado_em DESC LIMIT $1 OFFSET $2",
+        [porPagina, offset]
+      ),
+      getPool().query("SELECT COUNT(*)::int AS total FROM articles WHERE status = 'publicado'")
+    ]);
+    return { artigos: rows.map(artigoFromRow), total: totalRows[0]?.total ?? 0 };
+  },
+
+  // ---------- Visualizações / estatísticas ----------
+  async trackView(path: string, articleId?: string): Promise<void> {
+    await getPool().query(
+      "INSERT INTO page_views (path, article_id) VALUES ($1, $2)",
+      [path, articleId ?? null]
+    );
+  },
+
+  async getStats() {
+    const pool = getPool();
+    const [totalRes, hojeRes, semanaRes, topRes] = await Promise.all([
+      pool.query("SELECT COUNT(*)::int AS n FROM page_views"),
+      pool.query("SELECT COUNT(*)::int AS n FROM page_views WHERE criado_em >= now() - interval '1 day'"),
+      pool.query("SELECT COUNT(*)::int AS n FROM page_views WHERE criado_em >= now() - interval '7 days'"),
+      pool.query(`
+        SELECT a.id, a.titulo, a.categoria, COUNT(pv.id)::int AS views
+        FROM page_views pv
+        JOIN articles a ON a.id = pv.article_id
+        WHERE pv.criado_em >= now() - interval '30 days'
+        GROUP BY a.id, a.titulo, a.categoria
+        ORDER BY views DESC
+        LIMIT 10
+      `)
+    ]);
+    return {
+      totalViews: totalRes.rows[0]?.n ?? 0,
+      viewsHoje: hojeRes.rows[0]?.n ?? 0,
+      views7dias: semanaRes.rows[0]?.n ?? 0,
+      topArtigos: topRes.rows as { id: string; titulo: string; categoria: string; views: number }[]
+    };
   }
 };
