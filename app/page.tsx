@@ -3,6 +3,7 @@ import Footer from "@/components/Footer";
 import ArticleCard from "@/components/ArticleCard";
 import AdBanner from "@/components/AdBanner";
 import Newsletter from "@/components/Newsletter";
+import ViewTracker from "@/components/ViewTracker";
 import { database } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -22,6 +23,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <ViewTracker />
       <Header />
       <AdBanner posicao="topo" />
 
