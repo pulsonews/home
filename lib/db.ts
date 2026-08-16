@@ -4,7 +4,19 @@ const { Pool } = pg;
 
 export type Categoria = { slug: string; nome: string; cor: string };
 export type Fonte = { id: string; nome: string; url: string; categoria: string; ativo: boolean };
-export type Banner = { id: string; posicao: string; tipo: "adsense" | "html"; slotId?: string; html?: string; ativo: boolean };
+export type Banner = {
+  id: string;
+  posicao: string;
+  tipo: "adsense" | "html";
+  slotId?: string;
+  html?: string;
+  ativo: boolean;
+  nome?: string;
+  dataInicio?: string;
+  dataFim?: string;
+  maxImpressoes?: number;
+  impressoes?: number;
+};
 export type Artigo = {
   id: string;
   titulo: string;
@@ -78,7 +90,12 @@ function bannerFromRow(row: any): Banner {
     tipo: row.tipo,
     slotId: row.slot_id ?? undefined,
     html: row.html ?? undefined,
-    ativo: row.ativo
+    ativo: row.ativo,
+    nome: row.nome ?? undefined,
+    dataInicio: row.data_inicio ? new Date(row.data_inicio).toISOString() : undefined,
+    dataFim: row.data_fim ? new Date(row.data_fim).toISOString() : undefined,
+    maxImpressoes: row.max_impressoes ?? undefined,
+    impressoes: row.impressoes ?? 0
   };
 }
 
@@ -160,38 +177,80 @@ export const database = {
 
   // ---------- Banners ----------
   async getBanners(): Promise<Banner[]> {
-    const { rows } = await getPool().query(
-      "SELECT id, posicao, tipo, slot_id, html, ativo FROM banners ORDER BY posicao ASC"
-    );
+    const { rows } = await getPool().query("SELECT * FROM banners ORDER BY posicao ASC, nome ASC");
     return rows.map(bannerFromRow);
   },
 
-  async setBanners(banners: Banner[]): Promise<void> {
-    const client = await getPool().connect();
-    try {
-      await client.query("BEGIN");
-      await client.query("DELETE FROM banners");
-      for (const b of banners) {
-        await client.query(
-          "INSERT INTO banners (id, posicao, tipo, slot_id, html, ativo) VALUES ($1,$2,$3,$4,$5,$6)",
-          [b.id, b.posicao, b.tipo, b.slotId ?? null, b.html ?? null, b.ativo]
-        );
-      }
-      await client.query("COMMIT");
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+  async createBanner(b: Banner): Promise<void> {
+    await getPool().query(
+      `INSERT INTO banners (id, posicao, tipo, slot_id, html, ativo, nome, data_inicio, data_fim, max_impressoes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [
+        b.id,
+        b.posicao,
+        b.tipo,
+        b.slotId ?? null,
+        b.html ?? null,
+        b.ativo,
+        b.nome ?? null,
+        b.dataInicio ?? null,
+        b.dataFim ?? null,
+        b.maxImpressoes ?? null
+      ]
+    );
   },
 
-  async getBanner(posicao: string): Promise<Banner | undefined> {
+  async updateBanner(id: string, campos: Partial<Banner>): Promise<void> {
+    const mapa: Record<string, string> = {
+      posicao: "posicao",
+      tipo: "tipo",
+      slotId: "slot_id",
+      html: "html",
+      ativo: "ativo",
+      nome: "nome",
+      dataInicio: "data_inicio",
+      dataFim: "data_fim",
+      maxImpressoes: "max_impressoes"
+    };
+    const colunas: string[] = [];
+    const valores: any[] = [];
+    let i = 1;
+    for (const [chave, coluna] of Object.entries(mapa)) {
+      if (chave in campos) {
+        colunas.push(`${coluna} = $${i}`);
+        valores.push((campos as any)[chave] ?? null);
+        i++;
+      }
+    }
+    if (colunas.length === 0) return;
+    valores.push(id);
+    await getPool().query(`UPDATE banners SET ${colunas.join(", ")} WHERE id = $${i}`, valores);
+  },
+
+  async deleteBanner(id: string): Promise<void> {
+    await getPool().query("DELETE FROM banners WHERE id = $1", [id]);
+  },
+
+  // Escolhe aleatoriamente um banner elegível (ativo, dentro do período e
+  // abaixo do limite de impressões) entre os cadastrados para a posição —
+  // é assim que a rotação entre vários banners acontece.
+  async getBannerParaExibir(posicao: string): Promise<Banner | undefined> {
     const { rows } = await getPool().query(
-      "SELECT id, posicao, tipo, slot_id, html, ativo FROM banners WHERE posicao = $1 AND ativo = true LIMIT 1",
+      `SELECT * FROM banners
+       WHERE posicao = $1
+         AND ativo = true
+         AND (data_inicio IS NULL OR data_inicio <= now())
+         AND (data_fim IS NULL OR data_fim >= now())
+         AND (max_impressoes IS NULL OR impressoes < max_impressoes)
+       ORDER BY random()
+       LIMIT 1`,
       [posicao]
     );
     return rows[0] ? bannerFromRow(rows[0]) : undefined;
+  },
+
+  async incrementarImpressaoBanner(id: string): Promise<void> {
+    await getPool().query("UPDATE banners SET impressoes = impressoes + 1 WHERE id = $1", [id]);
   },
 
   // ---------- Artigos ----------
