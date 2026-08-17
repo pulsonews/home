@@ -4,6 +4,7 @@ import ArticleCard from "@/components/ArticleCard";
 import AdBanner from "@/components/AdBanner";
 import Newsletter from "@/components/Newsletter";
 import ViewTracker from "@/components/ViewTracker";
+import MaisLidas from "@/components/MaisLidas";
 import { database } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -38,6 +39,10 @@ export default async function HomePage() {
                 <ArticleCard key={a.id} artigo={a} mostrarSeloAutoral={seloAtivo} />
               ))}
             </section>
+
+            <div className="my-10 max-w-md">
+              <MaisLidas />
+            </div>
 
             <div className="my-10">
               <AdBanner posicao="meio-feed" />
