@@ -78,3 +78,12 @@ ALTER TABLE banners ADD COLUMN IF NOT EXISTS data_inicio TIMESTAMPTZ;
 ALTER TABLE banners ADD COLUMN IF NOT EXISTS data_fim TIMESTAMPTZ;
 ALTER TABLE banners ADD COLUMN IF NOT EXISTS max_impressoes INTEGER;
 ALTER TABLE banners ADD COLUMN IF NOT EXISTS impressoes INTEGER NOT NULL DEFAULT 0;
+
+-- Reações rápidas (emoji) por notícia.
+CREATE TABLE IF NOT EXISTS reactions (
+  id         BIGSERIAL PRIMARY KEY,
+  article_id TEXT NOT NULL,
+  emoji      TEXT NOT NULL,
+  criado_em  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_reactions_article ON reactions (article_id);
