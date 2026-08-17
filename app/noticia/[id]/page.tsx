@@ -6,6 +6,9 @@ import ShareButtons from "@/components/ShareButtons";
 import ArticleCard from "@/components/ArticleCard";
 import { FormattedDateTime } from "@/components/RelativeTime";
 import ViewTracker from "@/components/ViewTracker";
+import ReadingProgress from "@/components/ReadingProgress";
+import ReactionBar from "@/components/ReactionBar";
+import MaisLidas from "@/components/MaisLidas";
 import { database } from "@/lib/db";
 import type { Metadata } from "next";
 
@@ -61,6 +64,7 @@ export default async function NoticiaPage({
     ]);
   if (!data) notFound();
   const { artigo, relacionadas } = data;
+  const contagemReacoes = await database.getReactionCounts(artigo.id);
   const avisoAtivo = mostrarAvisoIA === "true";
   const seloAtivo = mostrarSeloAutoral === "true";
   const nomeSite = nomeSiteConfig || "Pulso Notícias";
@@ -101,6 +105,7 @@ export default async function NoticiaPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <ViewTracker articleId={artigo.id} />
+      <ReadingProgress />
       <Header />
       <main className="mx-auto max-w-6xl px-4 py-8">
         <div className="lg:grid lg:grid-cols-[1fr_300px] lg:gap-10">
@@ -181,6 +186,10 @@ export default async function NoticiaPage({
 
             <ShareButtons url={urlCompleta} titulo={artigo.titulo} />
 
+            <div className="my-6">
+              <ReactionBar articleId={artigo.id} contagemInicial={contagemReacoes} />
+            </div>
+
             <div className="my-8">
               <AdBanner posicao="artigo" />
             </div>
@@ -213,7 +222,8 @@ export default async function NoticiaPage({
           </article>
 
           <aside className="hidden lg:block">
-            <div className="sticky top-24">
+            <div className="sticky top-24 space-y-6">
+              <MaisLidas />
               <AdBanner posicao="lateral" />
             </div>
           </aside>
