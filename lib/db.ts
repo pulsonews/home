@@ -472,6 +472,39 @@ export const database = {
     );
   },
 
+  // ---------- Reações rápidas ----------
+  async addReaction(articleId: string, emoji: string): Promise<void> {
+    await getPool().query(
+      "INSERT INTO reactions (article_id, emoji) VALUES ($1, $2)",
+      [articleId, emoji]
+    );
+  },
+
+  async getReactionCounts(articleId: string): Promise<Record<string, number>> {
+    const { rows } = await getPool().query(
+      "SELECT emoji, COUNT(*)::int AS n FROM reactions WHERE article_id = $1 GROUP BY emoji",
+      [articleId]
+    );
+    const contagem: Record<string, number> = {};
+    for (const r of rows) contagem[r.emoji] = r.n;
+    return contagem;
+  },
+
+  // ---------- Mais lidas ----------
+  async getMaisLidas(periodoHoras: number, limite = 5) {
+    const { rows } = await getPool().query(
+      `SELECT a.id, a.titulo, a.categoria, a.imagem, COUNT(pv.id)::int AS views
+       FROM page_views pv
+       JOIN articles a ON a.id = pv.article_id AND a.status = 'publicado'
+       WHERE pv.criado_em >= now() - ($1 || ' hours')::interval
+       GROUP BY a.id, a.titulo, a.categoria, a.imagem
+       ORDER BY views DESC
+       LIMIT $2`,
+      [periodoHoras, limite]
+    );
+    return rows as { id: string; titulo: string; categoria: string; imagem: string | null; views: number }[];
+  },
+
   async getStats() {
     const pool = getPool();
     const [totalRes, hojeRes, semanaRes, topRes] = await Promise.all([
